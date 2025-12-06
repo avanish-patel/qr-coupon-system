@@ -534,10 +534,15 @@
                             <div class="scan-corner br"></div>
                             <div class="scan-line"></div>
                         </div>
-                        <div class="scanning-indicator">Scanning for QR code...</div>
+                        <div class="scanning-indicator" id="scanStatus">Scanning for QR code...</div>
+                        <div style="margin-top: 12px; font-size: 13px; color: #86868b;">
+                            💡 Hold phone steady, keep QR code centered
+                        </div>
+                        <button class="btn btn-secondary" style="margin-top: 12px; max-width: 200px;" onclick="captureTestFrame()">📸 Test Capture</button>
                     </div>
                     
                     <canvas id="canvas"></canvas>
+                    <div id="testResult" style="margin-top: 12px; text-align: center;"></div>
                 </div>
 
                 <div class="divider"><span>or</span></div>
@@ -558,12 +563,13 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+    <script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"></script>
     <script>
         let currentRole = null;
         let videoStream = null;
         let scanning = false;
         let scanAnimationFrame = null;
+        let scanCount = 0;
 
         // Set default dates
         window.addEventListener('load', () => {
@@ -767,23 +773,48 @@
         async function startCamera() {
             try {
                 const video = document.getElementById('video');
-                videoStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { 
-                        facingMode: 'environment',
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    } 
-                });
+                
+                // Reset counter
+                scanCount = 0;
+                document.getElementById('scanStatus').textContent = 'Scanning for QR code...';
+                document.getElementById('scanStatus').style.color = '#007aff';
+                document.getElementById('testResult').innerHTML = '';
+                
+                // Request camera with multiple constraints
+                const constraints = {
+                    video: {
+                        facingMode: { ideal: 'environment' },
+                        width: { ideal: 1920, min: 640 },
+                        height: { ideal: 1080, min: 480 },
+                    }
+                };
+                
+                videoStream = await navigator.mediaDevices.getUserMedia(constraints);
                 video.srcObject = videoStream;
+                
+                // Wait for video to be ready
+                await new Promise((resolve) => {
+                    video.onloadedmetadata = () => {
+                        video.play();
+                        console.log('Camera started:', video.videoWidth, 'x', video.videoHeight);
+                        resolve();
+                    };
+                });
                 
                 document.getElementById('cameraBtn').classList.add('hidden');
                 document.getElementById('videoContainer').classList.remove('hidden');
                 document.getElementById('stopCameraBtn').classList.remove('hidden');
                 
                 scanning = true;
-                scanQRCode();
+                
+                // Add slight delay before starting scan
+                setTimeout(() => {
+                    scanQRCode();
+                }, 500);
+                
             } catch (error) {
-                alert('Unable to access camera. Please check permissions or try manual entry.');
+                console.error('Camera error:', error);
+                alert('Unable to access camera. Please check permissions or try manual entry.\n\nError: ' + error.message);
             }
         }
 
@@ -814,17 +845,100 @@
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
                 const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-                const code = jsQR(imageData.data, imageData.width, imageData.height);
+                
+                // Try multiple inversion attempts for better detection
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: "attemptBoth",
+                });
 
-                if (code) {
+                scanCount++;
+                if (scanCount % 30 === 0) {
+                    document.getElementById('scanStatus').textContent = `Scanning... (${scanCount} frames checked)`;
+                }
+
+                if (code && code.data) {
+                    console.log("✅ QR Code detected:", code.data);
                     scanning = false;
-                    stopCamera();
-                    validateCode(code.data);
+                    
+                    // Vibrate on success (if supported)
+                    if (navigator.vibrate) {
+                        navigator.vibrate(200);
+                    }
+                    
+                    // Visual feedback
+                    document.getElementById('scanStatus').textContent = "✓ Code Found!";
+                    document.getElementById('scanStatus').style.color = "#34c759";
+                    
+                    setTimeout(() => {
+                        stopCamera();
+                        validateCode(code.data);
+                    }, 500);
                     return;
                 }
             }
 
             scanAnimationFrame = requestAnimationFrame(scanQRCode);
+        }
+
+        function captureTestFrame() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
+            
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Create a visible test canvas
+                const testCanvas = document.createElement('canvas');
+                testCanvas.width = 320;
+                testCanvas.height = 240;
+                testCanvas.style.border = '2px solid #007aff';
+                testCanvas.style.borderRadius = '8px';
+                testCanvas.style.maxWidth = '100%';
+                const testCtx = testCanvas.getContext('2d');
+                testCtx.drawImage(canvas, 0, 0, testCanvas.width, testCanvas.height);
+                
+                // Try to detect QR
+                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: "attemptBoth",
+                });
+                
+                const testResult = document.getElementById('testResult');
+                testResult.innerHTML = '';
+                testResult.appendChild(testCanvas);
+                
+                const result = document.createElement('div');
+                result.style.marginTop = '12px';
+                result.style.fontSize = '14px';
+                
+                if (code && code.data) {
+                    result.innerHTML = `<div style="color: #34c759; font-weight: 600;">✓ QR Code Detected!</div>
+                                       <div style="color: #666; font-size: 12px; margin-top: 4px;">${code.data.substring(0, 20)}...</div>`;
+                    
+                    // Auto validate
+                    setTimeout(() => {
+                        stopCamera();
+                        validateCode(code.data);
+                    }, 1000);
+                } else {
+                    result.innerHTML = `<div style="color: #ff3b30; font-weight: 600;">✗ No QR Code Found</div>
+                                       <div style="color: #666; font-size: 12px; margin-top: 4px;">
+                                         Resolution: ${canvas.width}x${canvas.height}<br>
+                                         Try: Better lighting, closer/farther distance
+                                       </div>`;
+                }
+                
+                testResult.appendChild(result);
+            }
+        }
+
+        function toggleDebug() {
+            debugMode = !debugMode;
+            const debugCanvas = document.getElementById('debugCanvas');
+            debugCanvas.style.display = debugMode ? 'block' : 'none';
         }
 
         async function validateManual() {
