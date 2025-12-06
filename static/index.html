@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Coupon System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f7;
+            min-height: 100vh;
+            padding: 20px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
+            color: white;
+            padding: 40px 24px 32px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 15px;
+            font-weight: 400;
+        }
+
+        .content {
+            padding: 24px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #1d1d1f;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 16px;
+            border: 1px solid #d2d2d7;
+            border-radius: 12px;
+            font-size: 17px;
+            transition: all 0.2s ease;
+            background: #ffffff;
+            font-family: inherit;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #007aff;
+            box-shadow: 0 0 0 4px rgba(0,122,255,0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            letter-spacing: -0.2px;
+        }
+
+        .btn-primary {
+            background: #007aff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0051d5;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .btn-secondary {
+            background: #f5f5f7;
+            color: #1d1d1f;
+            margin-top: 12px;
+        }
+
+        .btn-secondary:hover {
+            background: #e8e8ed;
+        }
+
+        .btn-danger {
+            background: #ff3b30;
+            color: white;
+            margin-top: 12px;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .message {
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            font-size: 15px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.success {
+            background: #d1f2eb;
+            color: #00695c;
+        }
+
+        .message.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: #f5f5f7;
+            padding: 20px;
+            border-radius: 16px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #007aff;
+            letter-spacing: -1px;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: #86868b;
+            text-transform: uppercase;
+            margin-top: 4px;
+            font-weight: 600;
+        }
+
+        .stat-card.used .stat-value { color: #34c759; }
+        .stat-card.expired .stat-value { color: #ff3b30; }
+        .stat-card.total .stat-value { color: #5856d6; }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .qr-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .qr-item {
+            background: #ffffff;
+            border: 1px solid #d2d2d7;
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            transition: all 0.2s ease;
+            break-inside: avoid;
+        }
+
+        .qr-item:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+
+        .qr-item img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .qr-batch {
+            font-size: 12px;
+            color: #007aff;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .qr-desc {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .qr-expiry {
+            font-size: 10px;
+            color: #ff3b30;
+            font-weight: 600;
+        }
+
+        .qr-item code {
+            display: block;
+            font-size: 9px;
+            color: #86868b;
+            word-break: break-all;
+            margin-top: 8px;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .filter-bar input,
+        .filter-bar select {
+            padding: 12px;
+        }
+
+        .camera-container {
+            text-align: center;
+            padding: 24px 0;
+        }
+
+        .camera-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 24px;
+            background: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            box-shadow: 0 8px 24px rgba(0,122,255,0.3);
+        }
+
+        #video {
+            width: 100%;
+            max-width: 100%;
+            border-radius: 16px;
+            margin: 20px 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        canvas {
+            display: none;
+        }
+
+        .scan-overlay {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .scan-frame {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 200px;
+            border: 3px solid #007aff;
+            border-radius: 16px;
+            pointer-events: none;
+        }
+
+        .scan-corner {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border: 3px solid #007aff;
+        }
+
+        .scan-corner.tl { top: -3px; left: -3px; border-right: none; border-bottom: none; border-radius: 16px 0 0 0; }
+        .scan-corner.tr { top: -3px; right: -3px; border-left: none; border-bottom: none; border-radius: 0 16px 0 0; }
+        .scan-corner.bl { bottom: -3px; left: -3px; border-right: none; border-top: none; border-radius: 0 0 0 16px; }
+        .scan-corner.br { bottom: -3px; right: -3px; border-left: none; border-top: none; border-radius: 0 0 16px 0; }
+
+        .scan-line {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #007aff, transparent);
+            animation: scan 2s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: 0; }
+            50% { top: 100%; }
+            100% { top: 0; }
+        }
+
+        .scanning-indicator {
+            margin-top: 16px;
+            color: #007aff;
+            font-size: 15px;
+            font-weight: 600;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 24px 0;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #d2d2d7;
+        }
+
+        .divider span {
+            padding: 0 16px;
+            color: #86868b;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .coupon-details {
+            background: #f5f5f7;
+            padding: 16px;
+            border-radius: 12px;
+            margin-top: 12px;
+        }
+
+        .coupon-details p {
+            margin: 8px 0;
+            font-size: 15px;
+        }
+
+        .coupon-details strong {
+            color: #1d1d1f;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+            .container {
+                box-shadow: none;
+                max-width: 100%;
+            }
+            .header, .btn, .stats-grid, .divider, .filter-bar {
+                display: none;
+            }
+            .qr-grid {
+                grid-template-columns: repeat(3, 1fr);
+                page-break-inside: avoid;
+            }
+            .qr-item {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎟️ Coupons</h1>
+            <p>Advanced validation system</p>
+        </div>
+
+        <div class="content">
+            <!-- Login Screen -->
+            <div id="loginScreen">
+                <div class="input-group">
+                    <label for="password">Enter PIN</label>
+                    <input type="password" id="password" maxlength="4" placeholder="••••" inputmode="numeric" autocomplete="off">
+                </div>
+                <button class="btn btn-primary" onclick="login()">Continue</button>
+                <div id="loginMessage"></div>
+            </div>
+
+            <!-- Admin Screen -->
+            <div id="adminScreen" class="hidden">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalActive">0</div>
+                        <div class="stat-label">Active</div>
+                    </div>
+                    <div class="stat-card used">
+                        <div class="stat-value" id="totalUsed">0</div>
+                        <div class="stat-label">Used</div>
+                    </div>
+                    <div class="stat-card expired">
+                        <div class="stat-value" id="totalExpired">0</div>
+                        <div class="stat-label">Expired</div>
+                    </div>
+                    <div class="stat-card total">
+                        <div class="stat-value" id="totalCoupons">0</div>
+                        <div class="stat-label">Total</div>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="batchName">Batch Name (Optional)</label>
+                    <input type="text" id="batchName" placeholder="e.g., Summer Sale 2024">
+                </div>
+
+                <div class="input-group">
+                    <label for="description">Description (Optional)</label>
+                    <textarea id="description" placeholder="e.g., 20% off all items"></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="validFrom">Valid From</label>
+                        <input type="date" id="validFrom">
+                    </div>
+                    <div class="input-group">
+                        <label for="validUntil">Valid Until</label>
+                        <input type="date" id="validUntil">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="couponCount">Number of Coupons</label>
+                    <input type="number" id="couponCount" min="1" max="100" value="5">
+                </div>
+
+                <button class="btn btn-primary" onclick="generateCoupons()">Generate QR Codes</button>
+                
+                <div class="divider"><span>Manage</span></div>
+
+                <div class="filter-bar">
+                    <input type="text" id="searchInput" placeholder="🔍 Search..." style="flex: 2;">
+                    <select id="batchFilter" style="flex: 1;">
+                        <option value="">All Batches</option>
+                    </select>
+                    <select id="statusFilter" style="flex: 1;">
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="used">Used</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-secondary" onclick="viewCoupons()">View All Coupons</button>
+                <button class="btn btn-secondary" onclick="printCoupons()">🖨️ Print Coupons</button>
+                <button class="btn btn-secondary" onclick="logout()">Sign Out</button>
+
+                <div id="qrCodesContainer"></div>
+            </div>
+
+            <!-- Validator Screen -->
+            <div id="validatorScreen" class="hidden">
+                <div class="camera-container">
+                    <div class="camera-icon">📷</div>
+                    <button class="btn btn-primary" id="cameraBtn" onclick="startCamera()">Open Camera</button>
+                    
+                    <div id="videoContainer" class="scan-overlay hidden">
+                        <video id="video" autoplay playsinline></video>
+                        <div class="scan-frame">
+                            <div class="scan-corner tl"></div>
+                            <div class="scan-corner tr"></div>
+                            <div class="scan-corner bl"></div>
+                            <div class="scan-corner br"></div>
+                            <div class="scan-line"></div>
+                        </div>
+                        <div class="scanning-indicator">Scanning for QR code...</div>
+                    </div>
+                    
+                    <canvas id="canvas"></canvas>
+                </div>
+
+                <div class="divider"><span>or</span></div>
+                
+                <div id="manualEntry">
+                    <div class="input-group">
+                        <label for="manualCode">Enter Code Manually</label>
+                        <input type="text" id="manualCode" placeholder="Paste or type code">
+                    </div>
+                    <button class="btn btn-primary" onclick="validateManual()">Validate Code</button>
+                </div>
+
+                <button class="btn btn-danger hidden" id="stopCameraBtn" onclick="stopCamera()">Stop Camera</button>
+                <button class="btn btn-secondary" onclick="logout()">Sign Out</button>
+                
+                <div id="validationMessage"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+    <script>
+        let currentRole = null;
+        let videoStream = null;
+        let scanning = false;
+        let scanAnimationFrame = null;
+
+        // Set default dates
+        window.addEventListener('load', () => {
+            const today = new Date().toISOString().split('T')[0];
+            const nextMonth = new Date();
+            nextMonth.setMonth(nextMonth.getMonth() + 1);
+            const nextMonthStr = nextMonth.toISOString().split('T')[0];
+            
+            document.getElementById('validFrom').value = today;
+            document.getElementById('validUntil').value = nextMonthStr;
+            document.getElementById('password').focus();
+        });
+
+        async function login() {
+            const password = document.getElementById('password').value;
+            
+            if (password.length !== 4) {
+                showMessage('loginMessage', 'Please enter a 4-digit PIN', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentRole = data.role;
+                    document.getElementById('loginScreen').classList.add('hidden');
+                    
+                    if (data.role === 'admin') {
+                        document.getElementById('adminScreen').classList.remove('hidden');
+                        loadStats();
+                        loadBatches();
+                    } else {
+                        document.getElementById('validatorScreen').classList.remove('hidden');
+                    }
+                } else {
+                    showMessage('loginMessage', data.message, 'error');
+                }
+            } catch (error) {
+                showMessage('loginMessage', 'Connection error', 'error');
+            }
+        }
+
+        function logout() {
+            currentRole = null;
+            stopCamera();
+            document.getElementById('adminScreen').classList.add('hidden');
+            document.getElementById('validatorScreen').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('password').value = '';
+            document.getElementById('qrCodesContainer').innerHTML = '';
+            document.getElementById('validationMessage').innerHTML = '';
+        }
+
+        async function generateCoupons() {
+            const count = parseInt(document.getElementById('couponCount').value);
+            const batchName = document.getElementById('batchName').value || null;
+            const description = document.getElementById('description').value || null;
+            const validFrom = document.getElementById('validFrom').value || null;
+            const validUntil = document.getElementById('validUntil').value || null;
+            
+            if (count < 1 || count > 100) {
+                alert('Please enter a number between 1 and 100');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        count, 
+                        batch_name: batchName,
+                        description,
+                        valid_from: validFrom,
+                        valid_until: validUntil
+                    })
+                });
+
+                const data = await response.json();
+                displayQRCodes(data.qr_codes);
+                loadStats();
+                loadBatches();
+            } catch (error) {
+                alert('Error generating coupons');
+            }
+        }
+
+        function displayQRCodes(qrCodes) {
+            const container = document.getElementById('qrCodesContainer');
+            container.innerHTML = '<div class="qr-grid"></div>';
+            const grid = container.querySelector('.qr-grid');
+
+            qrCodes.forEach(qr => {
+                const item = document.createElement('div');
+                item.className = 'qr-item';
+                let html = `<img src="${qr.qr_image}" alt="QR Code">`;
+                
+                if (qr.batch_name) {
+                    html += `<div class="qr-batch">${qr.batch_name}</div>`;
+                }
+                if (qr.description) {
+                    html += `<div class="qr-desc">${qr.description}</div>`;
+                }
+                if (qr.valid_until) {
+                    html += `<div class="qr-expiry">Valid until: ${qr.valid_until}</div>`;
+                }
+                html += `<code>${qr.code.substring(0, 8)}...</code>`;
+                
+                item.innerHTML = html;
+                grid.appendChild(item);
+            });
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const stats = await response.json();
+                document.getElementById('totalActive').textContent = stats.active;
+                document.getElementById('totalUsed').textContent = stats.used;
+                document.getElementById('totalExpired').textContent = stats.expired;
+                document.getElementById('totalCoupons').textContent = stats.total;
+            } catch (error) {
+                console.error('Error loading stats');
+            }
+        }
+
+        async function loadBatches() {
+            try {
+                const response = await fetch('/api/batches');
+                const batches = await response.json();
+                const select = document.getElementById('batchFilter');
+                select.innerHTML = '<option value="">All Batches</option>';
+                batches.forEach(batch => {
+                    const option = document.createElement('option');
+                    option.value = batch;
+                    option.textContent = batch;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading batches');
+            }
+        }
+
+        async function viewCoupons() {
+            const search = document.getElementById('searchInput').value;
+            const batch = document.getElementById('batchFilter').value;
+            const status = document.getElementById('statusFilter').value;
+            
+            const params = new URLSearchParams();
+            if (search) params.append('search', search);
+            if (batch) params.append('batch', batch);
+            if (status) params.append('status', status);
+
+            try {
+                const response = await fetch(`/api/coupons?${params}`);
+                const coupons = await response.json();
+                
+                const container = document.getElementById('qrCodesContainer');
+                container.innerHTML = '<div class="qr-grid"></div>';
+                const grid = container.querySelector('.qr-grid');
+
+                coupons.forEach(coupon => {
+                    const item = document.createElement('div');
+                    item.className = 'qr-item';
+                    let html = `<div style="text-align: left; padding: 8px;">`;
+                    
+                    if (coupon.batch_name) {
+                        html += `<div class="qr-batch">${coupon.batch_name}</div>`;
+                    }
+                    if (coupon.description) {
+                        html += `<div class="qr-desc">${coupon.description}</div>`;
+                    }
+                    html += `<div style="font-size: 11px; color: ${coupon.is_used ? '#34c759' : '#007aff'}; font-weight: 600;">
+                        ${coupon.is_used ? '✓ Used' : '○ Active'}
+                    </div>`;
+                    if (coupon.valid_until) {
+                        html += `<div class="qr-expiry">Expires: ${coupon.valid_until}</div>`;
+                    }
+                    html += `<code>${coupon.code.substring(0, 12)}...</code>`;
+                    html += `</div>`;
+                    
+                    item.innerHTML = html;
+                    grid.appendChild(item);
+                });
+            } catch (error) {
+                alert('Error loading coupons');
+            }
+        }
+
+        function printCoupons() {
+            window.print();
+        }
+
+        async function startCamera() {
+            try {
+                const video = document.getElementById('video');
+                videoStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } 
+                });
+                video.srcObject = videoStream;
+                
+                document.getElementById('cameraBtn').classList.add('hidden');
+                document.getElementById('videoContainer').classList.remove('hidden');
+                document.getElementById('stopCameraBtn').classList.remove('hidden');
+                
+                scanning = true;
+                scanQRCode();
+            } catch (error) {
+                alert('Unable to access camera. Please check permissions or try manual entry.');
+            }
+        }
+
+        function stopCamera() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            scanning = false;
+            if (scanAnimationFrame) {
+                cancelAnimationFrame(scanAnimationFrame);
+            }
+            document.getElementById('videoContainer').classList.add('hidden');
+            document.getElementById('cameraBtn').classList.remove('hidden');
+            document.getElementById('stopCameraBtn').classList.add('hidden');
+        }
+
+        function scanQRCode() {
+            if (!scanning) return;
+
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
+
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+                if (code) {
+                    scanning = false;
+                    stopCamera();
+                    validateCode(code.data);
+                    return;
+                }
+            }
+
+            scanAnimationFrame = requestAnimationFrame(scanQRCode);
+        }
+
+        async function validateManual() {
+            const code = document.getElementById('manualCode').value.trim();
+            if (code) {
+                await validateCode(code);
+                document.getElementById('manualCode').value = '';
+            }
+        }
+
+        async function validateCode(code) {
+            try {
+                const response = await fetch('/api/validate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+
+                const data = await response.json();
+                const messageType = data.success ? 'success' : 'error';
+                let message = `<div class="message ${messageType}">${data.message}`;
+                
+                if (data.coupon) {
+                    message += `<div class="coupon-details">`;
+                    if (data.coupon.batch_name) {
+                        message += `<p><strong>Batch:</strong> ${data.coupon.batch_name}</p>`;
+                    }
+                    if (data.coupon.description) {
+                        message += `<p><strong>Offer:</strong> ${data.coupon.description}</p>`;
+                    }
+                    if (data.coupon.valid_until) {
+                        message += `<p><strong>Valid Until:</strong> ${data.coupon.valid_until}</p>`;
+                    }
+                    message += `</div>`;
+                }
+                
+                message += `</div>`;
+                document.getElementById('validationMessage').innerHTML = message;
+                
+                setTimeout(() => {
+                    document.getElementById('validationMessage').innerHTML = '';
+                }, 8000);
+            } catch (error) {
+                showMessage('validationMessage', 'Validation error', 'error');
+            }
+        }
+
+        function showMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="message ${type}">${message}</div>`;
+        }
+
+        // Event listeners
+        document.getElementById('password').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') login();
+        });
+
+        document.getElementById('manualCode').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') validateManual();
+        });
+
+        document.getElementById('searchInput')?.addEventListener('input', viewCoupons);
+        document.getElementById('batchFilter')?.addEventListener('change', viewCoupons);
+        document.getElementById('statusFilter')?.addEventListener('change', viewCoupons);
+    </script>
+</body>
+</html>

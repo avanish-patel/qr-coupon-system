@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  qr-coupon-system:
+    build: .
+    container_name: qr-coupon-system
+    ports:
+      - "3000:3000"
+    volumes:
+      - qr-data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:/app/data/coupons.db
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.5
+
+volumes:
+  qr-data:
+    driver: local
