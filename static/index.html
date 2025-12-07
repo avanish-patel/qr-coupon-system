@@ -672,8 +672,8 @@
             qrCodes.forEach(qr => {
                 const item = document.createElement('div');
                 item.className = 'qr-item';
-                let html = `<img src="${qr.qr_image}" alt="QR Code">`;
-                
+                let html = `<img src="${qr.qr_image}" alt="QR Code" style="cursor: pointer;" onclick="showFullCode('${qr.code}')">`;
+
                 if (qr.batch_name) {
                     html += `<div class="qr-batch">${qr.batch_name}</div>`;
                 }
@@ -683,8 +683,10 @@
                 if (qr.valid_until) {
                     html += `<div class="qr-expiry">Valid until: ${qr.valid_until}</div>`;
                 }
-                html += `<code>${qr.code.substring(0, 8)}...</code>`;
-                
+                html += `<code style="cursor: pointer;" onclick="showFullCode('${qr.code}')">${qr.code.substring(0, 8)}...</code>`;
+                html += `<div class="full-code hidden" style="font-size: 9px; color: #86868b; margin-top: 8px; word-break: break-all; display: none;">${qr.code}</div>`;
+                html += `<button onclick="copyToClipboard('${qr.code}')" style="margin-top: 5px; padding: 4px 8px; font-size: 11px; border-radius: 6px;">📋 Copy</button>`;
+
                 item.innerHTML = html;
                 grid.appendChild(item);
             });
@@ -724,7 +726,7 @@
             const search = document.getElementById('searchInput').value;
             const batch = document.getElementById('batchFilter').value;
             const status = document.getElementById('statusFilter').value;
-            
+
             const params = new URLSearchParams();
             if (search) params.append('search', search);
             if (batch) params.append('batch', batch);
@@ -733,16 +735,31 @@
             try {
                 const response = await fetch(`/api/coupons?${params}`);
                 const coupons = await response.json();
-                
+
                 const container = document.getElementById('qrCodesContainer');
                 container.innerHTML = '<div class="qr-grid"></div>';
                 const grid = container.querySelector('.qr-grid');
 
                 coupons.forEach(coupon => {
+                    // Generate QR code for the coupon (using a placeholder approach since we can't generate actual QR codes client-side without library)
+                    const qr_image = `data:image/svg+xml;utf8,${encodeURIComponent(
+                        `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+                            <rect width="200" height="200" fill="white"/>
+                            <foreignObject width="200" height="200">
+                                <div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: center; justify-content: center; height: 100%;">
+                                    <div style="font-size: 14px; text-align: center; padding: 10px; word-break: break-word;">
+                                        QR CODE<br/>
+                                        <small>${coupon.code.substring(0, 8)}...</small>
+                                    </div>
+                                </div>
+                            </foreignObject>
+                        </svg>`
+                    )}`;
+
                     const item = document.createElement('div');
                     item.className = 'qr-item';
-                    let html = `<div style="text-align: left; padding: 8px;">`;
-                    
+                    let html = `<img src="${qr_image}" alt="QR Code" style="width: 100%; height: auto; border-radius: 8px; margin-bottom: 8px; cursor: pointer;" onclick="showFullCode('${coupon.code}')">`;
+
                     if (coupon.batch_name) {
                         html += `<div class="qr-batch">${coupon.batch_name}</div>`;
                     }
@@ -755,9 +772,10 @@
                     if (coupon.valid_until) {
                         html += `<div class="qr-expiry">Expires: ${coupon.valid_until}</div>`;
                     }
-                    html += `<code>${coupon.code.substring(0, 12)}...</code>`;
-                    html += `</div>`;
-                    
+                    html += `<code style="cursor: pointer;" onclick="showFullCode('${coupon.code}')">${coupon.code.substring(0, 12)}...</code>`;
+                    html += `<div class="full-code hidden" style="font-size: 9px; color: #86868b; margin-top: 8px; word-break: break-all; display: none;">${coupon.code}</div>`;
+                    html += `<button onclick="copyToClipboard('${coupon.code}')" style="margin-top: 5px; padding: 4px 8px; font-size: 11px; border-radius: 6px;">📋 Copy</button>`;
+
                     item.innerHTML = html;
                     grid.appendChild(item);
                 });
@@ -960,7 +978,7 @@
                 const data = await response.json();
                 const messageType = data.success ? 'success' : 'error';
                 let message = `<div class="message ${messageType}">${data.message}`;
-                
+
                 if (data.coupon) {
                     message += `<div class="coupon-details">`;
                     if (data.coupon.batch_name) {
@@ -974,10 +992,10 @@
                     }
                     message += `</div>`;
                 }
-                
+
                 message += `</div>`;
                 document.getElementById('validationMessage').innerHTML = message;
-                
+
                 setTimeout(() => {
                     document.getElementById('validationMessage').innerHTML = '';
                 }, 8000);
@@ -989,6 +1007,74 @@
         function showMessage(elementId, message, type) {
             const element = document.getElementById(elementId);
             element.innerHTML = `<div class="message ${type}">${message}</div>`;
+        }
+
+        function showFullCode(code) {
+            // Show the full code in an alert or prompt
+            alert(`Full coupon code:\n\n${code}\n\nThis code has been copied to your clipboard.`);
+            copyToClipboard(code);
+        }
+
+        function copyToClipboard(text) {
+            // Try modern clipboard API first, then fallback
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    // Show temporary feedback
+                    const tempMessage = document.createElement('div');
+                    tempMessage.textContent = '✓ Copied to clipboard!';
+                    tempMessage.style.position = 'fixed';
+                    tempMessage.style.bottom = '20px';
+                    tempMessage.style.right = '20px';
+                    tempMessage.style.backgroundColor = '#34c759';
+                    tempMessage.style.color = 'white';
+                    tempMessage.style.padding = '10px 15px';
+                    tempMessage.style.borderRadius = '8px';
+                    tempMessage.style.zIndex = '1000';
+                    document.body.appendChild(tempMessage);
+
+                    setTimeout(() => {
+                        document.body.removeChild(tempMessage);
+                    }, 2000);
+                }).catch(err => {
+                    // Fallback to execCommand
+                    fallbackCopyToClipboard(text);
+                });
+            } else {
+                fallbackCopyToClipboard(text);
+            }
+        }
+
+        function fallbackCopyToClipboard(text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                // Show temporary feedback
+                const tempMessage = document.createElement('div');
+                tempMessage.textContent = '✓ Copied to clipboard!';
+                tempMessage.style.position = 'fixed';
+                tempMessage.style.bottom = '20px';
+                tempMessage.style.right = '20px';
+                tempMessage.style.backgroundColor = '#34c759';
+                tempMessage.style.color = 'white';
+                tempMessage.style.padding = '10px 15px';
+                tempMessage.style.borderRadius = '8px';
+                tempMessage.style.zIndex = '1000';
+                document.body.appendChild(tempMessage);
+
+                setTimeout(() => {
+                    document.body.removeChild(tempMessage);
+                }, 2000);
+            } catch (err) {
+                alert('Failed to copy text: ' + err);
+            }
+            document.body.removeChild(textArea);
         }
 
         // Event listeners
