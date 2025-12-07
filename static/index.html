@@ -362,6 +362,133 @@
             50% { opacity: 0.5; }
         }
 
+        /* Modal styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 24px;
+        }
+
+        .modal-icon.success {
+            background: #e8f5e9;
+            color: #4caf50;
+        }
+
+        .modal-icon.error {
+            background: #ffebee;
+            color: #f44336;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1d1d1f;
+            flex: 1;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #86868b;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-btn:hover {
+            background: #f5f5f7;
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+        }
+
+        .modal-body p {
+            margin: 10px 0;
+            color: #1d1d1f;
+            line-height: 1.5;
+        }
+
+        .coupon-details-modal {
+            background: #f5f5f7;
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 15px;
+        }
+
+        .coupon-details-modal p {
+            margin: 8px 0;
+            font-size: 15px;
+        }
+
+        .coupon-details-modal strong {
+            color: #1d1d1f;
+        }
+
+        .modal-footer {
+            text-align: right;
+        }
+
+        .modal-footer .btn {
+            width: auto;
+            padding: 10px 24px;
+        }
+
         .divider {
             display: flex;
             align-items: center;
@@ -976,31 +1103,9 @@
                 });
 
                 const data = await response.json();
-                const messageType = data.success ? 'success' : 'error';
-                let message = `<div class="message ${messageType}">${data.message}`;
-
-                if (data.coupon) {
-                    message += `<div class="coupon-details">`;
-                    if (data.coupon.batch_name) {
-                        message += `<p><strong>Batch:</strong> ${data.coupon.batch_name}</p>`;
-                    }
-                    if (data.coupon.description) {
-                        message += `<p><strong>Offer:</strong> ${data.coupon.description}</p>`;
-                    }
-                    if (data.coupon.valid_until) {
-                        message += `<p><strong>Valid Until:</strong> ${data.coupon.valid_until}</p>`;
-                    }
-                    message += `</div>`;
-                }
-
-                message += `</div>`;
-                document.getElementById('validationMessage').innerHTML = message;
-
-                setTimeout(() => {
-                    document.getElementById('validationMessage').innerHTML = '';
-                }, 8000);
+                showValidationModal(data.success, data.message, data.coupon);
             } catch (error) {
-                showMessage('validationMessage', 'Validation error', 'error');
+                showValidationModal(false, 'Validation error occurred', null);
             }
         }
 
@@ -1085,6 +1190,72 @@
         document.getElementById('manualCode').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') validateManual();
         });
+
+        // Add validation modal HTML if it doesn't exist
+        const existingModal = document.getElementById('validationModal');
+        if (!existingModal) {
+            const modalHtml = `
+            <div id="validationModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <div class="modal-icon" id="modalIcon">
+                            <span id="modalIconText">✓</span>
+                        </div>
+                        <div class="modal-title" id="modalTitle">Title</div>
+                    </div>
+                    <div class="modal-body" id="modalBody">
+                        <p>Message content</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" onclick="closeValidationModal()">Close</button>
+                    </div>
+                </div>
+            </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+
+        function showValidationModal(success, message, coupon) {
+            const modal = document.getElementById('validationModal');
+            const modalIcon = document.getElementById('modalIcon');
+            const modalIconText = document.getElementById('modalIconText');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+
+            if (success) {
+                modalIcon.className = 'modal-icon success';
+                modalIconText.textContent = '✓';
+                modalTitle.textContent = 'Validation Successful';
+            } else {
+                modalIcon.className = 'modal-icon error';
+                modalIconText.textContent = '✗';
+                modalTitle.textContent = 'Validation Failed';
+            }
+
+            let bodyContent = `<p>${message}</p>`;
+
+            if (coupon) {
+                bodyContent += `<div class="coupon-details-modal">`;
+                if (coupon.batch_name) {
+                    bodyContent += `<p><strong>Batch:</strong> ${coupon.batch_name}</p>`;
+                }
+                if (coupon.description) {
+                    bodyContent += `<p><strong>Offer:</strong> ${coupon.description}</p>`;
+                }
+                if (coupon.valid_until) {
+                    bodyContent += `<p><strong>Valid Until:</strong> ${coupon.valid_until}</p>`;
+                }
+                bodyContent += `</div>`;
+            }
+
+            modalBody.innerHTML = bodyContent;
+            modal.classList.add('active');
+        }
+
+        function closeValidationModal() {
+            const modal = document.getElementById('validationModal');
+            modal.classList.remove('active');
+        }
 
         document.getElementById('searchInput')?.addEventListener('input', viewCoupons);
         document.getElementById('batchFilter')?.addEventListener('change', viewCoupons);
